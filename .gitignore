@@ -1,0 +1,41 @@
+# .gitignore for Stealth Keylogger
+
+# Compiled binaries
+*.exe
+*.dll
+*.o
+*.obj
+
+# Log files
+*.log
+*.tmp
+*.txt
+
+# Build directories
+build/
+bin/
+obj/
+
+# IDE files
+.vscode/
+.vs/
+*.suo
+*.user
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Backup files
+*~
+*.bak
+*.swp
+*.swo
+
+# Test files
+test/
+tests/
