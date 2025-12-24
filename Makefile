@@ -55,7 +55,7 @@ run: release
 	@echo [*] Running release version...
 	./$(TARGET)
 
-# Install (copy to system directory - requires admin)
+# Install
 install: release
 	@echo [*] Installing to C:\\Windows\\System32...
 	@echo [!] This requires administrator privileges
