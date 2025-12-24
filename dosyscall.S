@@ -1,6 +1,6 @@
 # DoSyscall - Indirect Syscall Stub for GCC/MinGW (x64)
 #
-# By : 28Zaakypro@proton.me
+# By 28Zaakypro@proton.me
 #
 # Windows x64 calling convention:
 #   RCX = ssn, RDX = syscallAddr, R8 = arg1, R9 = arg2
