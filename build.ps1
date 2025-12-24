@@ -43,9 +43,18 @@ if (-not $compilerPath) {
 $buildCmd = "$compiler $($cxxFlags -join ' ') -o $output $sources"
 Write-Host "[*] Executing: $buildCmd" -ForegroundColor Gray
 
+# First assemble the DoSyscall stub
+Write-Host "[*] Assembling dosyscall.S..." -ForegroundColor Yellow
+$asmOutput = & gcc -c dosyscall.S -o dosyscall.o 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`n[ERROR] Assembly failed" -ForegroundColor Red
+    Write-Host $asmOutput
+    exit 1
+}
+
 # Compile
 $startTime = Get-Date
-& $compiler @cxxFlags -o $output $sources 2>&1
+& $compiler @cxxFlags -o $output main.cpp IndirectSyscalls.cpp APIHashing.cpp dosyscall.o 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     $endTime = Get-Date

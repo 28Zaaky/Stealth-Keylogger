@@ -14,17 +14,24 @@ You need MinGW-w64 or any modern C++ compiler on Windows.
 
 Debug version (shows console):
 ```
-g++ -o keylogger_debug.exe main.cpp -std=c++17 -Wall -Wextra -O2 -static
+g++ -c dosyscall.S -o dosyscall.o
+g++ -o keylogger_debug.exe main.cpp IndirectSyscalls.cpp APIHashing.cpp dosyscall.o -std=c++17 -Wall -Wextra -O2 -static
 ```
 
 Release version (no console, runs hidden):
 ```
-g++ -o keylogger.exe main.cpp -std=c++17 -Wall -Wextra -O2 -static -mwindows
+g++ -c dosyscall.S -o dosyscall.o
+g++ -o keylogger.exe main.cpp IndirectSyscalls.cpp APIHashing.cpp dosyscall.o -std=c++17 -Wall -Wextra -O2 -static -mwindows
 ```
 
 Or just use the PowerShell script:
 ```
 .\build.ps1 -Mode Release
+```
+
+Or use Make:
+```
+make release
 ```
 
 ## How to use
@@ -88,6 +95,12 @@ Date: 2025-12-24 15:45:00
 - Thread-safe buffer with mutex
 - Tracks active window with GetForegroundWindow
 - No admin rights needed
+
+### Evasion techniques
+
+- **Indirect Syscalls**: Direct NT syscall invocation via clean NTDLL (bypass EDR hooks)
+- **API Hashing**: djb2 hash algorithm for runtime API resolution (evades IAT analysis)
+- **String Obfuscation**: AES-128 CTR compile-time encryption with FNV-1a key derivation
 
 ## Detection
 

