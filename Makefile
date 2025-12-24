@@ -50,13 +50,13 @@ run: release
 install: release
 	@echo [*] Installing to C:\\Windows\\System32...
 	@echo [!] This requires administrator privileges
-	copy $(TARGET) C:\\Windows\\System32\\svchost32.exe
+	cp $(TARGET) /c/Windows/System32/svchost32.exe
 	@echo [+] Installed as svchost32.exe
 
 # Uninstall
 uninstall:
 	@echo [*] Removing from system directory...
-	del C:\\Windows\\System32\\svchost32.exe
+	rm -f /c/Windows/System32/svchost32.exe
 	@echo [+] Uninstalled
 
 # Help
