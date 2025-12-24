@@ -28,7 +28,7 @@ constexpr uint32_t WStringHash(const wchar_t* str, size_t len) {
     return hash;
 }
 
-// AES S-Box split into 16 chunks with null padding (low entropy)
+// AES S-Box split into 16 chunks with null padding for low entropy
 constexpr uint8_t SBOX_0[16] = {0x63,0x7C,0x77,0x7B,0xF2,0x6B,0x6F,0xC5,0x30,0x01,0x67,0x2B,0xFE,0xD7,0xAB,0x76};
 constexpr uint8_t PAD_0[4] = {0x00,0x00,0x00,0x00};
 constexpr uint8_t SBOX_1[16] = {0xCA,0x82,0xC9,0x7D,0xFA,0x59,0x47,0xF0,0xAD,0xD4,0xA2,0xAF,0x9C,0xA4,0x72,0xC0};
@@ -88,17 +88,17 @@ constexpr uint8_t GetSboxValue(uint8_t index) {
     }
 }
 
-// Generate 128-bit AES key from hash (uses ADD instead of XOR)
+// Generate 128-bit AES key from hash
 constexpr void DeriveAESKey(uint32_t hash, uint8_t key[16]) {
     for (int i = 0; i < 16; ++i) {
         // Arithmetic operations avoid XOR detection patterns
         uint8_t hashByte = static_cast<uint8_t>(hash >> ((i % 4) * 8));
         key[i] = hashByte + (i * 37) + 0xC3;
-        hash = (hash << 7) | (hash >> 25); // Rotate
+        hash = (hash << 7) | (hash >> 25); 
     }
 }
 
-// AES-128 CTR keystream generator (compile-time safe, no XOR)
+// AES-128 CTR keystream generator
 constexpr uint8_t AESKeystreamByte(const uint8_t key[16], size_t index) {
     // CTR mode with ADD and ROL for diffusion
     uint8_t counter = static_cast<uint8_t>(index & 0xFF);
@@ -186,6 +186,7 @@ public:
             uint8_t ks1 = AESKeystreamByte(key, i * 2);
             uint8_t ks2 = AESKeystreamByte(key, i * 2 + 1);
             uint16_t plainChar = static_cast<uint16_t>(str[i]);
+            
             // Split into bytes, encrypt each, recombine
             uint8_t low = EncryptByte(plainChar & 0xFF, ks1);
             uint8_t high = EncryptByte((plainChar >> 8) & 0xFF, ks2);
@@ -213,6 +214,7 @@ public:
         for (size_t i = 0; i < N - 1 && i < 255; ++i) {
             uint8_t ks1 = AESKeystreamByte(key, i * 2);
             uint8_t ks2 = AESKeystreamByte(key, i * 2 + 1);
+            
             // Decrypt bytes separately (no XOR)
             uint8_t low = DecryptByte(data[i] & 0xFF, ks1);
             uint8_t high = DecryptByte((data[i] >> 8) & 0xFF, ks2);
