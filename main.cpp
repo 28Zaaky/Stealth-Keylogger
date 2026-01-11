@@ -45,8 +45,8 @@ int main() {
     }
     
     wcout << L"========================================" << endl;
-    wcout << L"  Stealth Keylogger v3.0" << endl;
-    wcout << L"  Copyright (c) 2025" << endl;
+    wcout << L"  Stealth Keylogger " << endl;
+    wcout << L"  Copyright (c) 28zaakypro@proton.me 2025" << endl;
     wcout << L"========================================\n" << endl;
     
     // Start keylogger with callback and file logging
